@@ -19,17 +19,13 @@ $hosts_table = $wpdb->prefix . 'hosts';
 $users_table = $wpdb->prefix . 'users';
 
 // Fetch tokens for the current user
-$tokens = $wpdb->get_results(
-  $wpdb->prepare(
-    "SELECT `tokens`.*, `hosts`.`name` as `host_name`
+$query = "SELECT `tokens`.*, `hosts`.`name` as `host_name`
     FROM `$table_name` tokens
     LEFT JOIN `$hosts_table` `hosts` ON `tokens`.`host_id` = `hosts`.`id`
     WHERE `tokens`.`user_id` = %d AND
           `tokens`.`status` = 'active' AND
-          `expired_at` < CURDATE()",
-    $current_user->ID
-  )
-);
+          `tokens`.`expired_at` > NOW()";
+$tokens = $wpdb->get_results($wpdb->prepare($query, $current_user->ID));
 ?>
 
 <div class="wrap">
@@ -77,13 +73,13 @@ document.addEventListener('DOMContentLoaded', function () {
   const iframe = document.getElementById('watch-iframe');
   const errorDiv = document.querySelector('#watch .loading .error');
 
-  hostsSelect.addEventListener('change', async function () {
-    loading.style.display = 'block';
+  hostsSelect?.addEventListener('change', async function () {
     iframe.style.display = 'none';
     errorDiv.textContent = '';
 
     const selectedToken = this.value;
-    try {
+    if (selectedToken) try {
+      loading.style.display = 'block';
       const token = await generateJWTToken(selectedToken);
       iframe.src = `http://${token.replaceAll('.', '-')}.localhost`;
       iframe.style.display = 'block';

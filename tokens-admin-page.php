@@ -8,7 +8,6 @@ $users_table = $wpdb->prefix . 'users';
 
 // Fetch the list of hosts and users
 $hosts = $wpdb->get_results("SELECT id, name FROM $hosts_table");
-$users = $wpdb->get_results("SELECT ID, display_name FROM $users_table WHERE role = 'subscriber'");
 $users = $wpdb->get_results(
     "SELECT `users`.ID, `users`.`display_name`
     FROM `$users_table` `users`

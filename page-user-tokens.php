@@ -19,17 +19,13 @@ $hosts_table = $wpdb->prefix . 'hosts';
 $users_table = $wpdb->prefix . 'users';
 
 // Fetch tokens for the current user
-$tokens = $wpdb->get_results(
-  $wpdb->prepare(
-    "SELECT `tokens`.*, `hosts`.`name` as `host_name`
+$query = "SELECT `tokens`.*, `hosts`.`name` as `host_name`
     FROM `$table_name` tokens
     LEFT JOIN `$hosts_table` `hosts` ON `tokens`.`host_id` = `hosts`.`id`
     WHERE `tokens`.`user_id` = %d AND
           `tokens`.`status` = 'active' AND
-          `tokens`.`expired_at` < CURDATE()",
-    $current_user->ID
-  )
-);
+          `tokens`.`expired_at` > NOW()";
+$tokens = $wpdb->get_results($wpdb->prepare($query, $current_user->ID));
 ?>
 
 <div class="wrap">
@@ -76,12 +72,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const loading = document.querySelector('#watch .loading')
   const iframe = document.getElementById('watch-iframe')
 
-  hostsSelect.addEventListener('change', function () {
-    loading.style.display = 'block'
+  hostsSelect?.addEventListener('change', function () {
     iframe.style.display = 'none'
 
     const selectedToken = this.value
     if (selectedToken) {
+      loading.style.display = 'block'
       iframe.src = `http://${selectedToken}.localhost`
       iframe.style.display = 'block'
       loading.style.display = 'none'

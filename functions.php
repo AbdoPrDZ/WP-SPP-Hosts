@@ -46,8 +46,7 @@ function hosts_page_content() {
 				$name = sanitize_text_field($_POST['name']);
 				$host = sanitize_text_field($_POST['host']);
 				$description = sanitize_textarea_field($_POST['description']);
-				$status = sanitize_textarea_field($_POST['status']);
-				$wpdb->insert($table_name, compact('name', 'host', 'description', 'status'));
+				$wpdb->insert($table_name, compact('name', 'host', 'description'));
 				break;
 
 			case 'edit':
@@ -55,8 +54,7 @@ function hosts_page_content() {
 				$name = sanitize_text_field($_POST['name']);
 				$host = sanitize_text_field($_POST['host']);
 				$description = sanitize_textarea_field($_POST['description']);
-				$status = sanitize_textarea_field($_POST['status']);
-				$wpdb->update($table_name, compact('name', 'host', 'description', 'status'), array('id' => $id));
+				$wpdb->update($table_name, compact('name', 'host', 'description'), array('id' => $id));
 				break;
 
 			case 'delete':
@@ -83,7 +81,7 @@ function create_tokens_table() {
 		`host_id` mediumint(9) NOT NULL,
 		`user_id` mediumint(9) NOT NULL,
 		`expired_at` datetime NOT NULL,
-		`status` enum('active', 'expired', 'canceled') NOT NULL DEFAULT('active'),
+		`status` enum('active', 'expired', 'canceled') NOT NULL DEFAULT 'active',
 		PRIMARY KEY (`id`),
     FOREIGN KEY (`host_id`) REFERENCES `$hosts_table`(`id`) ON DELETE CASCADE
 	) $charset_collate;";
@@ -116,17 +114,19 @@ function tokens_page_content() {
 			case 'add':
 				$host_id = intval($_POST['host_id']);
 				$user_id = intval($_POST['user_id']);
-				$token = md5("$host_id-$user_id-${time()}");
+				$token = md5("$host_id-$user_id-" . time());
+				$status = sanitize_textarea_field($_POST['status']);
 				$expired_at = sanitize_text_field($_POST['expired_at']);
-				$wpdb->insert($table_name, compact('token', 'host_id', 'user_id', 'expired_at'));
+				$wpdb->insert($table_name, compact('token', 'host_id', 'user_id', 'expired_at', 'status'));
 				break;
 
 			case 'edit':
 				$id = intval($_POST['id']);
 				$host_id = intval($_POST['host_id']);
 				$user_id = intval($_POST['user_id']);
+				$status = sanitize_textarea_field($_POST['status']);
 				$expired_at = sanitize_text_field($_POST['expired_at']);
-				$wpdb->update($table_name, compact('host_id', 'user_id', 'expired_at'), array('id' => $id));
+				$wpdb->update($table_name, compact('host_id', 'user_id', 'expired_at', 'status'), array('id' => $id));
 				break;
 
 			case 'delete':
@@ -215,7 +215,7 @@ function expire_tokens() {
 
   $table_name = $wpdb->prefix . 'tokens';
 
-  $query = "UPDATE `$table_name` SET `status` = 'expired' WHERE `status` = 'active' AND `expired_at` > CURDATE()";
+  $query = "UPDATE `$table_name` SET `status` = 'expired' WHERE `status` = 'active' AND `expired_at` >= NOW()";
 
   $wpdb->query($query);
 }
