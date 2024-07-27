@@ -215,7 +215,7 @@ function expire_tokens() {
 
   $table_name = $wpdb->prefix . 'tokens';
 
-  $query = "UPDATE `$table_name` SET `status` = 'expired' WHERE `status` = 'active' AND `expired_at` >= NOW()";
+  $query = "UPDATE `$table_name` SET `status` = 'expired' WHERE `status` = 'active' AND `expired_at` <= NOW()";
 
   $wpdb->query($query);
 }
