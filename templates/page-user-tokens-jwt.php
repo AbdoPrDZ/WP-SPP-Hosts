@@ -35,7 +35,7 @@ $tokens = $wpdb->get_results($wpdb->prepare($query, $current_user->ID));
     <select id="hosts-select">
       <option value="">-- Select a token --</option>
       <?php foreach ($tokens as $token) : ?>
-        <option value="<?php echo esc_attr($token->id); ?>">
+        <option value="<?php echo esc_attr($token->token); ?>">
           <?php echo esc_html($token->host_name); ?>
         </option>
       <?php endforeach; ?>
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (selectedToken) try {
       loading.style.display = 'block';
       const token = await generateJWTToken(selectedToken);
-      iframe.src = `http://${token.replaceAll('.', '-')}.localhost`;
+      iframe.src = `http://${selectedToken}.localhost/?${selectedToken}=${token}`;
       iframe.style.display = 'block';
       loading.style.display = 'none';
     } catch (err) {
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  function generateJWTToken(token_id) {
+  function generateJWTToken(token) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '?rest_route=/custom/v2/generate-jwt-token', true);
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       };
 
-      xhr.send(JSON.stringify({ token_id: token_id }));
+      xhr.send(JSON.stringify({ token: token }));
     });
   }
 });

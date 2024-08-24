@@ -2,7 +2,7 @@
 
 /* START ******************************** Setup Hosts Access Feature *********************************/
 
-function create_host_table() {
+function create_hosts_table() {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'hosts'; // Table name with WordPress prefix
 
@@ -20,7 +20,7 @@ function create_host_table() {
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
 }
-register_activation_hook(__FILE__, 'create_host_table');
+// register_activation_hook(__FILE__, 'create_hosts_table');
 
 function hosts_menu() {
 	add_menu_page(
@@ -38,6 +38,13 @@ add_action('admin_menu', 'hosts_menu');
 function hosts_page_content() {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'hosts';
+
+  // verify if hosts table exists
+  $result = $wpdb->get_results("SHOW TABLES LIKE '$table_name'");
+  if ( empty($result) ) {
+    // create hosts table if not exists
+    create_hosts_table();
+  }
 
 	// Handle form submission for adding/editing/deleting hosts
 	if (isset($_POST['action'])) {
@@ -90,7 +97,7 @@ function create_tokens_table() {
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
 }
-register_activation_hook(__FILE__, 'create_tokens_table');
+// register_activation_hook(__FILE__, 'create_tokens_table');
 
 function tokens_menu() {
 	add_submenu_page(
@@ -107,6 +114,13 @@ add_action('admin_menu', 'tokens_menu');
 function tokens_page_content() {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'tokens';
+
+  // verify if tokens table exists
+  $result = $wpdb->get_results("SHOW TABLES LIKE '$table_name'");
+  if ( empty($result) ) {
+    // create tokens table if not exists
+    create_tokens_table();
+  }
 
 	// Handle form submission for adding/editing/deleting tokens
 	if (isset($_POST['action'])) {
@@ -140,10 +154,10 @@ function tokens_page_content() {
 	include 'tokens-admin-page.php'; // Create this file for the admin page content
 }
 
-require_once ABSPATH . '/vendor/miladrahimi/php-jwt/src/Cryptography/Algorithms/Hmac/HS256.php';
-require_once ABSPATH . '/vendor/miladrahimi/php-jwt/src/Cryptography/Keys/HmacKey.php';
-require_once ABSPATH . '/vendor/miladrahimi/php-jwt/src/Generator.php';
-require_once ABSPATH . '/vendor/miladrahimi/php-jwt/src/Parser.php';
+require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Cryptography/Algorithms/Hmac/HS256.php';
+require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Cryptography/Keys/HmacKey.php';
+require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Generator.php';
+require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Parser.php';
 
 use MiladRahimi\Jwt\Cryptography\Algorithms\Hmac\HS256;
 use MiladRahimi\Jwt\Cryptography\Keys\HmacKey;
@@ -161,9 +175,9 @@ add_action('rest_api_init', function () {
 function generate_jwt_token(WP_REST_Request $request) {
 	global $wpdb;
 
-	$token_id = sanitize_text_field($request->get_param('token_id'));
+	$token = sanitize_text_field($request->get_param('token'));
 
-	if (empty($token_id)) {
+	if (empty($token)) {
 		return rest_ensure_response([
 			'success' => false,
 			'message' => 'Token ID is required.'
@@ -173,11 +187,11 @@ function generate_jwt_token(WP_REST_Request $request) {
 	$tokens_table = $wpdb->prefix . 'tokens';
 	$hosts_table = $wpdb->prefix . 'hosts';
 
-  $query = "SELECT *, `hosts`.`host` AS `host` FROM `$tokens_table` `tokens` LEFT JOIN `$hosts_table` `hosts` ON `tokens`.`host_id` = `hosts`.`id` WHERE `tokens`.`id` = %d";
+  $query = "SELECT *, `hosts`.`host` AS `host` FROM `$tokens_table` `tokens` LEFT JOIN `$hosts_table` `hosts` ON `tokens`.`host_id` = `hosts`.`id` WHERE `tokens`.`token` = %d";
 
-	$token = $wpdb->get_row($wpdb->prepare($query, $token_id));
+	$row = $wpdb->get_row($wpdb->prepare($query, $token));
 
-	if (empty($token)) {
+	if (empty($row)) {
 		return rest_ensure_response([
 			'success' => false,
 			'message' => 'Token not found.',
@@ -186,8 +200,10 @@ function generate_jwt_token(WP_REST_Request $request) {
 
   try {
     $payload = [
-      'host' => $token->host,
-      'exp' => $token->expired_at,
+      'host' => $row->host,
+      'token' => $row->token,
+      'time' => time(),
+      'exp' => strtotime($row->expired_at),
     ];
 
     // Use HS256 to generate and parse JWTs

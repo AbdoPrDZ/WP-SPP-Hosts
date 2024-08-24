@@ -1,6 +1,10 @@
 <?php
-// Include the Composer autoloader
-require_once ABSPATH . '/vendor/autoload.php';
 
+if ( ! defined( 'WP_SPP_HOSTS_DIR' ) ) {
+  define( 'WP_SPP_HOSTS_DIR', __DIR__ . '/' );
+}
+
+// Include the Composer autoloader
+require_once WP_SPP_HOSTS_DIR . 'vendor/autoload.php';
 // JWT Auth key
-define( 'JWT_AUTH_KEY',     'e(ZTHD]m$7GW+ja2#H8Lr mGhr1:K-dNQl,v)d:X;DQA6O*$>c6hv}H3g:7uj/zN' );
+define( 'JWT_AUTH_KEY',     'FAA200F027797FD16C7A134D150F2E60C4A0C68FAAF65B03A3B892DC9DCAE0C6' );

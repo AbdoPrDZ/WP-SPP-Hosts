@@ -5,7 +5,6 @@
   "license": "GPL-2.0-or-later",
   "require": {
     "php": ">=8.1",
-    "johnpbloch/wordpress": "^6.0",
     "miladrahimi/php-jwt": "3.*"
   },
   "config": {
