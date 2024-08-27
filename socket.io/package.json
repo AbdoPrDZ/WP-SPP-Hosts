@@ -1,0 +1,18 @@
+{
+  "name": "@abdopr/wp-spp-hosts-socket",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "The socket.io server for WP-SPP-Hosts.",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "redis": "^4.7.0",
+    "socket.io": "^4.7.5"
+  }
+}
