@@ -19,15 +19,25 @@ if (!defined('WP_SPP_HOSTS_DIR')) {
 // Include the Composer autoloader
 require_once WP_SPP_HOSTS_DIR . 'vendor/autoload.php';
 
-// Verify JWT Auth key
+function register_plugin() {
+  // register the plugin options
+  add_option('spp_jwt_auth_key', defined('SPP_JWT_AUTH_KEY') ? SPP_JWT_AUTH_KEY : bin2hex(random_bytes(32)));
+  add_option('spp_redis_url', 'redis://127.0.0.1:6379');
+  // add_option('spp_socket_server_status', 'stopped');
+  add_option('spp_socket_server_host', 'localhost');
+  add_option('spp_socket_server_port', '3000');
+  add_option('spp_socket_server_debug', 0);
+  add_option('spp_socket_server_log', '');
 
-if (!defined('WP_SPP_HOSTS_DIR')) {
-  die("undefined 'SPP_JWT_AUTH_KEY' constant value");
+  // create the plugin tables
+  create_hosts_table();
+  create_tokens_table();
 }
+register_activation_hook(__FILE__, 'register_plugin');
 
 function create_hosts_table() {
 	global $wpdb;
-	$table_name = $wpdb->prefix . 'hosts'; // Table name with WordPress prefix
+	$table_name = $wpdb->prefix . 'spp_hosts'; // Table name with WordPress prefix
 
 	// SQL to create the table
 	$charset_collate = $wpdb->get_charset_collate();
@@ -35,52 +45,174 @@ function create_hosts_table() {
 		`id` MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
 		`name` VARCHAR(255) NOT NULL,
 		`host` VARCHAR(255) NOT NULL,
-    'headers' TEXT NOT NULL,
+		`headers` TEXT NOT NULL,
 		`cookie` VARCHAR(255) NOT NULL,
 		`description` TEXT NOT NULL,
 		PRIMARY KEY (`id`)
 	) $charset_collate;";
 
 	// Include the WordPress upgrade file
-	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 	dbDelta($sql);
 }
-// register_activation_hook(__FILE__, 'create_hosts_table');
 
-function hosts_menu() {
-	add_menu_page(
-		'Manage Hosts',          // Page title
-		'Hosts',                 // Menu title
+function create_tokens_table() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'spp_tokens'; // Table name with WordPress prefix
+  $hosts_table = $wpdb->prefix . 'spp_hosts'; // Assuming the hosts table is named wp_hosts
+
+	// SQL to create the table
+	$charset_collate = $wpdb->get_charset_collate();
+	$sql = "CREATE TABLE `$table_name` (
+		`id` MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+		`token` VARCHAR(255) NOT NULL,
+		`host_id` MEDIUMINT(9) NOT NULL,
+		`user_id` MEDIUMINT(9) NOT NULL,
+		`expired_at` DATETIME NOT NULL,
+		`status` ENUM('active', 'expired', 'canceled') NOT NULL DEFAULT 'active',
+		PRIMARY KEY (`id`),
+    FOREIGN KEY (`host_id`) REFERENCES `$hosts_table`(`id`) ON DELETE CASCADE
+	) $charset_collate;";
+
+	// Include the WordPress upgrade file
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+	dbDelta($sql);
+}
+
+function attach_menu() {
+  add_menu_page(
+		'WP SPP Hosts',          // Page title
+		'SPP Hosts',             // Menu title
 		'manage_options',        // Capability
-		'manage-hosts',          // Menu slug
-		'hosts_page_content',    // Callback function
+		'wp-spp-hosts',          // Menu slug
+		'index_page_content',    // Callback function
 		'dashicons-networking',  // Dashicon class
 		6                        // Position
 	);
+	add_submenu_page(
+		'wp-spp-hosts',           // Parent slug
+		'Manage Hosts',          // Page title
+		'Hosts',                 // Menu title
+		'manage_options',         // Capability
+		'manage-hosts',          // Menu slug
+		'hosts_page_content'     // Callback function
+	);
+	add_submenu_page(
+		'wp-spp-hosts',           // Parent slug
+		'Manage Tokens',           // Page title
+		'Tokens',                  // Menu title
+		'manage_options',         // Capability
+		'manage-tokens',          // Menu slug
+		'tokens_page_content'     // Callback function
+	);
 }
-add_action('admin_menu', 'hosts_menu');
+add_action('admin_menu', 'attach_menu');
+
+/* Pages  */
 
 function validate_fields($fields, &$errors) {
   $errors = [];
   $valid = true;
   foreach ($fields as $field)
-    if (empty($_POST[$field])) {
+    if ($_POST[$field] == '') {
       $errors[$field] = "Field $field is required";
       $valid = false;
     }
   return $valid;
 }
 
+function index_page_content() {
+  if (isset($_POST['submit'])) {
+    print_r($_POST);
+    $errors = [];
+    $valid = validate_fields([
+      'jwt_auth_key',
+      'redis_url',
+      'socket_server_host',
+      'socket_server_port',
+      'socket_server_debug',
+    ], $errors);
+
+    // check socket_server_debug field must be boolean
+    if ($valid && $_POST['socket_server_debug'] !== '1' && $_POST['socket_server_debug'] !== '0') {
+      $errors['socket_server_debug'] = "Field socket_server_debug must be boolean";
+      $valid = false;
+    }
+
+    if ($valid) {
+      // update the plugin settings
+      update_option('spp_jwt_auth_key', sanitize_text_field($_POST['jwt_auth_key']));
+      update_option('spp_redis_url', sanitize_text_field($_POST['redis_url']));
+      update_option('spp_socket_server_host', sanitize_text_field($_POST['socket_server_host']));
+      update_option('spp_socket_server_port', sanitize_text_field($_POST['socket_server_port']));
+      update_option('spp_socket_server_debug', sanitize_text_field($_POST['socket_server_debug']));
+      update_option('spp_socket_server_log', sanitize_text_field($_POST['socket_server_log']));
+
+      // switch ($_POST['submit']) {
+      //   case 'start_socket_server':
+      //     if (get_option('spp_socket_server_status') === 'started') {
+      //       $errors['socket_server_status'] = "Socket server is already started";
+      //       break;
+      //     }
+
+      //     $os = [
+      //       "CYGWIN_NT-5.1" => "win",
+      //       "Darwin" => "macos",
+      //       "FreeBSD" => "linux",
+      //       "HP-UX" => "linux",
+      //       "IRIX64" => "linux",
+      //       "Linux" => "linux",
+      //       "NetBSD" => "linux",
+      //       "OpenBSD" => "linux",
+      //       "SunOS" => "linux",
+      //       "Unix" => "linux",
+      //       "WIN32" => "win",
+      //       "WINNT" => "win",
+      //       "Windows" => "win",
+      //     ][PHP_OS];
+      //     $jwt_auth_key = get_option('spp_jwt_auth_key');
+      //     $redis_url = get_option('spp_redis_url');
+      //     $socket_server_host = get_option('spp_socket_server_host');
+      //     $socket_server_port = get_option('spp_socket_server_port');
+      //     $socket_server_debug = get_option('spp_socket_server_debug') ? '--debug' : '';
+      //     $socket_server_log = get_option('spp_socket_server_log');
+      //     $socket_server_log = empty($socket_server_log) ? '' : "--log-file $socket_server_log";
+      //     // start the socket server
+      //     $command = WP_SPP_HOSTS_DIR . "socket.io/bin/server-$os
+      //                                       \"$jwt_auth_key\"
+      //                                       --redis-url=\"$redis_url\"
+      //                                       --host=\"$socket_server_host\"
+      //                                       --port=\"$socket_server_port\"
+      //                                       $socket_server_debug
+      //                                       $socket_server_log > /dev/null 2>&1 &";
+      //     shell_exec($command);
+
+      //     update_option('spp_socket_server_status', 'started');
+      //     break;
+      //   case 'stop_socket_server':
+      //     if (get_option('spp_socket_server_status') === 'stopped') {
+      //       $errors['socket_server_status'] = "Socket server is already stopped";
+      //       break;
+      //     }
+
+      //     $socket_server_port = get_option('spp_socket_server_port');
+      //     update_option('spp_socket_server_status', 'stopped');
+
+      //     // stop the socket server
+      //     shell_exec("kill -9 $(lsof -t -i:$socket_server_port)");
+      //     break;
+      //   default:
+      //     break;
+      // }
+    }
+	}
+
+  include 'pages/index-page.php';
+}
+
 function hosts_page_content() {
 	global $wpdb;
-	$table_name = $wpdb->prefix . 'hosts';
-
-  // verify if hosts table exists
-  $result = $wpdb->get_results("SHOW TABLES LIKE '$table_name'");
-  if ( empty($result) ) {
-    // create hosts table if not exists
-    create_hosts_table();
-  }
+	$table_name = $wpdb->prefix . 'spp_hosts';
 
 	// Handle form submission for adding/editing/deleting hosts
 	if (isset($_POST['action'])) {
@@ -125,55 +257,12 @@ function hosts_page_content() {
 	}
 
 	// Display the form and the list of hosts
-	include 'hosts-admin-page.php'; // Create this file for the admin page content
+	include 'pages/hosts-page.php';
 }
-
-function create_tokens_table() {
-	global $wpdb;
-	$table_name = $wpdb->prefix . 'tokens'; // Table name with WordPress prefix
-  $hosts_table = $wpdb->prefix . 'hosts'; // Assuming the hosts table is named wp_hosts
-
-	// SQL to create the table
-	$charset_collate = $wpdb->get_charset_collate();
-	$sql = "CREATE TABLE `$table_name` (
-		`id` MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
-		`token` VARCHAR(255) NOT NULL,
-		`host_id` MEDIUMINT(9) NOT NULL,
-		`user_id` MEDIUMINT(9) NOT NULL,
-		`expired_at` DATETIME NOT NULL,
-		`status` ENUM('active', 'expired', 'canceled') NOT NULL DEFAULT 'active',
-		PRIMARY KEY (`id`),
-    FOREIGN KEY (`host_id`) REFERENCES `$hosts_table`(`id`) ON DELETE CASCADE
-	) $charset_collate;";
-
-	// Include the WordPress upgrade file
-	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-	dbDelta($sql);
-}
-// register_activation_hook(__FILE__, 'create_tokens_table');
-
-function tokens_menu() {
-	add_submenu_page(
-		'manage-hosts',           // Parent slug
-		'Manage Tokens',          // Page title
-		'Tokens',                 // Menu title
-		'manage_options',         // Capability
-		'manage-tokens',          // Menu slug
-		'tokens_page_content'     // Callback function
-	);
-}
-add_action('admin_menu', 'tokens_menu');
 
 function tokens_page_content() {
 	global $wpdb;
-	$table_name = $wpdb->prefix . 'tokens';
-
-  // verify if tokens table exists
-  $result = $wpdb->get_results("SHOW TABLES LIKE '$table_name'");
-  if ( empty($result) ) {
-    // create tokens table if not exists
-    create_tokens_table();
-  }
+	$table_name = $wpdb->prefix . 'spp_tokens';
 
 	// Handle form submission for adding/editing/deleting tokens
 	if (isset($_POST['action'])) {
@@ -207,22 +296,22 @@ function tokens_page_content() {
 	}
 
 	// Display the form and the list of tokens
-	include 'tokens-admin-page.php'; // Create this file for the admin page content
+	include 'pages/tokens-page.php';
 }
+
+/* REST API */
 
 require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Cryptography/Algorithms/Hmac/HS256.php';
 require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Cryptography/Keys/HmacKey.php';
 require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Generator.php';
-require_once WP_SPP_HOSTS_DIR . 'vendor/miladrahimi/php-jwt/src/Parser.php';
 
 use MiladRahimi\Jwt\Cryptography\Algorithms\Hmac\HS256;
 use MiladRahimi\Jwt\Cryptography\Keys\HmacKey;
 use MiladRahimi\Jwt\Generator;
-use MiladRahimi\Jwt\Parser;
 
 function generate_jwt($payload) {
   // Use HS256 to generate and parse JWTs
-  $key = new HmacKey(SPP_JWT_AUTH_KEY);
+  $key = new HmacKey(get_option('spp_jwt_auth_key'));
   $signer = new HS256($key);
 
   // Generate a JWT
@@ -275,10 +364,14 @@ function generate_host_jwt_token(WP_REST_Request $request) {
 		]);
 	}
 
-	$tokens_table = $wpdb->prefix . 'tokens';
-	$hosts_table = $wpdb->prefix . 'hosts';
+	$tokens_table = $wpdb->prefix . 'spp_tokens';
+	$hosts_table = $wpdb->prefix . 'spp_hosts';
 
-  $query = "SELECT *, `hosts`.`host` AS `host` FROM `$tokens_table` `tokens` LEFT JOIN `$hosts_table` `hosts` ON `tokens`.`host_id` = `hosts`.`id` WHERE `tokens`.`token` = %d";
+  $query = "SELECT *, `hosts`.`host` AS `host`
+            FROM `$tokens_table` `tokens`
+            LEFT JOIN `$hosts_table` `hosts` ON `tokens`.`host_id` = `hosts`.`id`
+            WHERE `tokens`.`token` = %d
+              AND `tokens`.`expired_at` > NOW()";
 
 	$row = $wpdb->get_row($wpdb->prepare($query, $token));
 
@@ -310,39 +403,41 @@ function generate_host_jwt_token(WP_REST_Request $request) {
   }
 }
 
-function expire_tokens() {
-  global $wpdb;
+// function expire_tokens() {
+//   global $wpdb;
 
-  $table_name = $wpdb->prefix . 'tokens';
+//   $table_name = $wpdb->prefix . 'spp_tokens';
 
-  $query = "UPDATE `$table_name` SET `status` = 'expired' WHERE `status` = 'active' AND `expired_at` <= NOW()";
+//   $query = "UPDATE `$table_name` SET `status` = 'expired' WHERE `status` = 'active' AND `expired_at` <= NOW()";
 
-  $wpdb->query($query);
-}
+//   $wpdb->query($query);
+// }
 
-function custom_cron_schedules($schedules) {
-  $schedules['hourly'] = [
-    'interval' => 60 * 30,
-    'display'  => __('Every 30 min')
-  ];
-  return $schedules;
-}
-add_filter('cron_schedules', 'custom_cron_schedules');
+// function custom_cron_schedules($schedules) {
+//   $schedules['hourly'] = [
+//     'interval' => 60 * 30,
+//     'display'  => __('Every 30 min')
+//   ];
+//   return $schedules;
+// }
+// add_filter('cron_schedules', 'custom_cron_schedules');
 
-function schedule_expire_tokens_event() {
-  if (!wp_next_scheduled('expire_tokens_event')) {
-    wp_schedule_event(time(), 'hourly', 'expire_tokens_event');
-  }
-}
-add_action('wp', 'schedule_expire_tokens_event');
+// function schedule_expire_tokens_event() {
+//   if (!wp_next_scheduled('expire_tokens_event')) {
+//     wp_schedule_event(time(), 'hourly', 'expire_tokens_event');
+//   }
+// }
+// add_action('wp', 'schedule_expire_tokens_event');
 
-add_action('expire_tokens_event', 'expire_tokens');
+// add_action('expire_tokens_event', 'expire_tokens');
 
-function unschedule_expire_tokens_event() {
-  $timestamp = wp_next_scheduled('expire_tokens_event');
-  wp_unschedule_event($timestamp, 'expire_tokens_event');
-}
-register_deactivation_hook(__FILE__, 'unschedule_expire_tokens_event');
+// function unschedule_expire_tokens_event() {
+//   $timestamp = wp_next_scheduled('expire_tokens_event');
+//   wp_unschedule_event($timestamp, 'expire_tokens_event');
+// }
+// register_deactivation_hook(__FILE__, 'unschedule_expire_tokens_event');
+
+/* Templates  */
 
 function my_plugin_register_page_templates($templates) {
   $templates['page-user-tokens.php'] = 'User Tokens Page';
@@ -356,14 +451,13 @@ function my_plugin_load_page_template($template) {
   global $post;
 
   if ($post) {
-      $custom_template = get_post_meta($post->ID, '_wp_page_template', true);
+    $custom_template = get_post_meta($post->ID, '_wp_page_template', true);
 
-      if (in_array($custom_template, ['page-user-tokens-jwt.php', 'page-user-tokens-jwt.php', 'page-user-tokens-socket.php'])) {
-          $plugin_template = WP_SPP_HOSTS_DIR . "templates/$custom_template";
-          if (file_exists($plugin_template)) {
-              return $plugin_template;
-          }
-      }
+    if (in_array($custom_template, ['page-user-tokens-jwt.php', 'page-user-tokens-jwt.php', 'page-user-tokens-socket.php'])) {
+      $plugin_template = WP_SPP_HOSTS_DIR . "templates/$custom_template";
+      if (file_exists($plugin_template))
+          return $plugin_template;
+    }
   }
 
   return $template;

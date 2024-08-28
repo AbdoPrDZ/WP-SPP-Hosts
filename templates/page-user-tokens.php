@@ -14,8 +14,8 @@ get_header();
 
 global $wpdb;
 
-$table_name = $wpdb->prefix . 'tokens';
-$hosts_table = $wpdb->prefix . 'hosts';
+$table_name = $wpdb->prefix . 'spp_tokens';
+$hosts_table = $wpdb->prefix . 'spp_hosts';
 $users_table = $wpdb->prefix . 'users';
 
 // Fetch tokens for the current user
