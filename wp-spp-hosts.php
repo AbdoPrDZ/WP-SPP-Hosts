@@ -3,7 +3,7 @@
 Plugin Name:  WP SPP Hosts
 Plugin URI:   https://github.com/AbdoPrDZ/wp-spp-hosts
 Description:  A simple plugin to manage hosts and tokens for WordPress Smart proxy pass.
-Version:      1.0
+Version:      1.0.0
 Author:       AbdoPrDZ
 Author URI:   https://github.com/AbdoPrDZ
 License:      MIT
@@ -25,7 +25,7 @@ function register_plugin() {
   add_option('spp_redis_url', 'redis://127.0.0.1:6379');
   // add_option('spp_socket_server_status', 'stopped');
   add_option('spp_socket_server_host', 'localhost');
-  add_option('spp_socket_server_port', '3000');
+  add_option('spp_socket_server_port', 3000);
   add_option('spp_socket_server_debug', 0);
   add_option('spp_socket_server_log', '');
 
@@ -468,3 +468,29 @@ function enqueue_socket_io_script() {
   wp_enqueue_script('socket-io', 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js', array(), null, true);
 }
 add_action('wp_enqueue_scripts', 'enqueue_socket_io_script');
+
+/* Deactivate the plugin */
+
+function my_plugin_deactivation() {
+  global $wpdb;
+
+  // delete the plugin options
+  delete_option('spp_jwt_auth_key');
+  delete_option('spp_redis_url');
+  // delete_option('spp_socket_server_status');
+  delete_option('spp_socket_server_host');
+  delete_option('spp_socket_server_port');
+  delete_option('spp_socket_server_debug');
+  delete_option('spp_socket_server_log');
+
+  // drop the hosts table
+	$hosts_table = $wpdb->prefix . 'spp_hosts';
+	$tokens_table = $wpdb->prefix . 'tokens';
+
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+	dbDelta("DROP TABLE IF EXISTS $hosts_table");
+	dbDelta("DROP TABLE IF EXISTS $tokens_table");
+}
+
+// Register the deactivation hook
+register_deactivation_hook(__FILE__, 'my_plugin_deactivation');

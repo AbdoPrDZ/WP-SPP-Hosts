@@ -14,38 +14,32 @@ WP Smart Proxy Hosts is a powerful extension for WordPress that allows you to cr
 
 ## Installation
 
-1. Clone the extension into your wordpress directory.
+1. Install a latest release of WP-SPP-Hosts plugin, check [releases](https://github.com/AbdoPrDZ/WP-SPP-Hosts/releases).
+2. Upload the plugin into your wordpress website plugins.
+3. Activate the plugin.
+4. Check plugin settings.
+5. Start the Socket server, (you can find the running command on plugin tab).
 
-    ```shell
-    cd /var/www/wordpress
-    git clone https://github/AbdoPrDZ/WP-SPP-Hosts.git
-    ```
+## Usage
 
-2. Include the config file `wordpress/WP-SPP-Hosts/wp-config.php` into your root `wordpress/wp-config.php`.
+1. Enable members feature in your website (you can use [Ultimate Member](https://ultimatemember.com/) plugin).
+2. Check plugin settings (You can check socket server status and see logs).
+3. Add your hosts in WP-SPP-Hosts > Hosts tab.
+4. Generate tokens for users linked to your hosts with expiration date in WP-SPP-Hosts > Tokens tab.
+5. Create a new page you can use ready template (`User Tokens Page Using Socket IO`)
 
-    file: `wordpress/wp-config.php`
+## Screenshots
 
-    ```php
-    /* Other config lines */
+![Screenshot 1](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/1.png)
+![Screenshot 2](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/2.png)
+![Screenshot 3](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/3.png)
+![Screenshot 4](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/4.png)
+![Screenshot 5](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/5.png)
+![Screenshot 6](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/6.png)
+![Screenshot 7](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/7.png)
+![Screenshot 8](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/8.png)
+![Screenshot 9](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/screenshots/9.png)
 
-    /** Included WP-SPP-Hosts files. */
-    require_once ABSPATH . 'WP-SPP-Hosts/wp-config.php';
+## License
 
-    /** Sets up WordPress vars and included files. */
-    require_once ABSPATH . 'wp-settings.php';
-    ```
-
-3. Include the functions file `WP-SPP-Hosts/functions.php` into your theme functions file (e.g: `wordpress/wp-content/themes/freesia-empire/functions.php`)
-
-    ```php
-    /* Other lines */
-    
-    /* Include the WP-SPP-Hosts functions file. */
-    require_once WP_SPP_HOSTS_DIR .'functions.php';
-    ```
-
-4. Link the templates pages into your theme directory.
-
-    ```shell
-    sudo ln -s /var/www/wordpress/WP-SPP-Hosts/templates /var/www/wordpress/wp-content/themes/freesia-empire/wp-spp-hosts-templates
-    ```
+This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/AbdoPrDZ/WP-SPP-Hosts/blob/main/LICENSE.md) file for details.

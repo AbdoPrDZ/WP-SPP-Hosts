@@ -2,7 +2,7 @@
   "name": "yourname/yourproject",
   "description": "A WordPress project managed with Composer",
   "type": "project",
-  "license": "GPL-2.0-or-later",
+  "license": "MIT",
   "require": {
     "php": ">=8.1",
     "miladrahimi/php-jwt": "3.*"

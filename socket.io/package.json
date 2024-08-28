@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "The socket.io server for WP-SPP-Hosts.",
   "dependencies": {
     "commander": "^12.1.0",
