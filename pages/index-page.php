@@ -140,13 +140,9 @@ function error($errors, $target) {
       <td>
         <div id="socket-server-start-command">
 <?php
-$command_args = "\"$jwt_auth_key\"
-    --redis-url=\"$redis_url\"
-    --host=\"$socket_server_host\"
-    --port=\"$socket_server_port\"
-    $socket_server_debug
-    $socket_server_log
-    > /dev/null 2>&1 &";
+$socket_server_debug = $socket_server_debug ? "--debug" : "";
+$socket_server_log = $socket_server_log ? "--log-file=$socket_server_log" : "";
+$command_args = "\"$jwt_auth_key\" --redis-url=\"$redis_url\" --host=\"$socket_server_host\" --port=\"$socket_server_port\" $socket_server_debug $socket_server_log > /dev/null 2>&1 &";
 ?>
           <h3>Linux:</h3>
           <pre><?php echo WP_SPP_HOSTS_DIR . "socket.io/bin/server-linux $command_args";?></pre>
@@ -201,6 +197,11 @@ $command_args = "\"$jwt_auth_key\"
       background-color: #f9f9f9;
       border: 1px solid #ccc;
       padding: 10px;
+      white-space: pre-wrap; /* Since CSS 2.1 */
+      white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+      white-space: -pre-wrap; /* Opera 4-6 */
+      white-space: -o-pre-wrap; /* Opera 7 */
+      word-wrap: break-word; /* Internet Explorer 5.5+ */
     }
   </style>
 </div>
