@@ -47,6 +47,7 @@ function create_hosts_table() {
 		`host` VARCHAR(255) NOT NULL,
 		`headers` TEXT NOT NULL,
 		`cookie` VARCHAR(255) NOT NULL,
+		`blocked_routes` TEXT NOT NULL,
 		`description` TEXT NOT NULL,
 		PRIMARY KEY (`id`)
 	) $charset_collate;";
@@ -222,15 +223,16 @@ function hosts_page_content() {
         if (!validate_fields(['name', 'host', 'description'], $errors)) break;
 				$name = sanitize_text_field($_POST['name']);
 				$host = sanitize_text_field($_POST['host']);
-				$headers = sanitize_text_field($_POST['headers']);
+				$headers = sanitize_textarea_field($_POST['headers']);
         if (!empty($headers) && !is_object(json_decode($headers))) {
           $errors['headers'] = "Invalid headers json";
           print_r($errors);
           break;
         }
 				$cookie = sanitize_text_field($_POST['cookie']);
+        $blocked_routes = sanitize_textarea_field($_POST['blocked_routes']);
 				$description = sanitize_textarea_field($_POST['description']);
-				$wpdb->insert($table_name, compact('name', 'host', 'headers', 'cookie', 'description'));
+				$wpdb->insert($table_name, compact('name', 'host', 'headers', 'cookie', 'blocked_routes', 'description'));
 				break;
 
 			case 'edit':
@@ -238,15 +240,16 @@ function hosts_page_content() {
 				$id = intval($_POST['id']);
 				$name = sanitize_text_field($_POST['name']);
 				$host = sanitize_text_field($_POST['host']);
-				$headers = sanitize_text_field($_POST['headers']);
+				$headers = sanitize_textarea_field($_POST['headers']);
         if (!empty($headers) && !is_object(json_decode($headers))) {
           $errors['headers'] = "Invalid headers json";
           print_r($errors);
           break;
         }
 				$cookie = sanitize_text_field($_POST['cookie']);
+        $blocked_routes = sanitize_textarea_field($_POST['blocked_routes']);
 				$description = sanitize_textarea_field($_POST['description']);
-				$wpdb->update($table_name, compact('name', 'host', 'headers', 'cookie', 'description'), ['id' => $id]);
+				$wpdb->update($table_name, compact('name', 'host', 'headers', 'cookie', 'blocked_routes', 'description'), ['id' => $id]);
 				break;
 
 			case 'delete':
@@ -386,6 +389,7 @@ function generate_host_jwt_token(WP_REST_Request $request) {
     $payload = [
       'host' => $row->host,
       'cookie' => $row->cookie,
+      'blocked_routes' => $row->blocked_routes,
       'token' => $row->token,
       'time' => time(),
       'exp' => strtotime($row->expired_at),

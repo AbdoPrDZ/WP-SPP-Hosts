@@ -49,7 +49,7 @@ function error($errors, $target) {
         </td>
       </tr>
       <tr>
-        <th><label for="headers">Host Headers</label></th>
+        <th><label for="headers">Host Headers (JSON)</label></th>
         <td>
         <textarea name="headers" id="headers" class="large-text"><?php echo isset($item) ? esc_textarea($item->headers) : ''; ?></textarea>
           <?php if ($error = error($errors, 'headers')) : ?>
@@ -60,8 +60,17 @@ function error($errors, $target) {
       <tr>
         <th><label for="cookie">Host Cookie</label></th>
         <td>
-          <input type="text" name="cookie" id="cookie" value="<?php echo isset($item) ? esc_attr($item->cookie) : ''; ?>" class="regular-text">
+          <textarea name="cookie" id="cookie" class="large-text"><?php echo isset($item) ? esc_textarea($item->cookie) : ''; ?></textarea>
           <?php if ($error = error($errors, 'cookie')) : ?>
+            <p class="description error"><?php echo $error; ?></p>
+          <?php endif; ?>
+        </td>
+      </tr>
+      <tr>
+        <th><label for="blocked-routes">Blocked routes</label></th>
+        <td>
+          <textarea name="blocked_routes" id="blocked-routes" class="large-text"><?php echo isset($item) ? esc_textarea($item->blocked_routes) : ''; ?></textarea>
+          <?php if ($error = error($errors, 'blocked_routes')) : ?>
             <p class="description error"><?php echo $error; ?></p>
           <?php endif; ?>
         </td>
@@ -91,6 +100,7 @@ function error($errors, $target) {
               <th>Host Target</th>
               <th>Host Headers</th>
               <th>Host Cookie</th>
+              <th>Blocked routes</th>
               <th>Description</th>
               <th>Actions</th>
           </tr>
@@ -104,7 +114,8 @@ function error($errors, $target) {
               echo '<td>' . esc_html($row->name) . '</td>';
               echo '<td>' . esc_html($row->host) . '</td>';
               echo '<td>' . esc_html(empty($row->headers) ? 'None' : $row->headers) . '</td>';
-              echo '<td>' . esc_html(empty($row->cookie) ? 'None' : $row->cookie) . '</td>';
+              echo '<td>' . esc_html(empty($row->cookie) ? 'None' : substr($row->cookie, 0, 50) . "...") . '</td>';
+              echo '<td>' . esc_html(empty($row->blocked_routes) ? 'None' : $row->blocked_routes) . '</td>';
               echo '<td>' . esc_html($row->description) . '</td>';
               echo '<td>
                   <a href="' . admin_url('admin.php?page=manage-hosts&edit=' . $row->id) . '" class="button">Edit</a> |
